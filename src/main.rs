@@ -26,6 +26,8 @@ async fn main() -> std::io::Result<()> {
     ];
 
     // create an application builder
+    // The `move` keyword at the front indicates that this
+    // closure takes ownership of the variables it uses
     let app = move || {
         let cors = Cors::default()
             .allowed_origin("http://localhost:8080")
@@ -43,7 +45,10 @@ async fn main() -> std::io::Result<()> {
 
     // now start the HTTP server
     // HttpServer::new(app).bind(("127.0.0.1", 8080))?.run().await
-    HttpServer::new(app).bind(bind)?.run().await
+
+    // HttpServer::new(app).bind(bind)?.run().await
+    //  OR specify the number of workers as below...
+    HttpServer::new(app).bind(bind).unwrap().workers(8).run().await
 }
 
 pub fn general_config(config: &mut web::ServiceConfig) {
@@ -53,8 +58,12 @@ pub fn general_config(config: &mut web::ServiceConfig) {
     config.service(general::factorize_handler);
     config.service(general::favicon_handler);
     config.service(general::redirect_handler);
-    config.route("/", web::get().to(general::index_handler));
+    config.service(general::html_handler);
+    config.service(general::echo_handler);
+    config.route("/", web::get().to(general::root_handler));
     config.route("/status", web::get().to(general::health_check_handler));
+    config.route("/list", web::get().to(general::collection));
+    config.route("/list/{val}", web::get().to(general::collection));
     config.route("/countries", web::get().to(general::countries_handler));
     config.route("/something", web::get().to(something::perform_something));
 }
