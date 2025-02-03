@@ -4,13 +4,12 @@ use std::collections::HashMap;
 
 use actix_files::NamedFile;
 use actix_web::{
-    http::{
-        self,
-        header::ContentType,
-    },
+    http::{self, header::ContentType},
     web::{self, Form},
-    HttpResponse, Responder, Result,
+    HttpMessage, HttpRequest, HttpResponse, Responder, Result,
 };
+use chrono::{DateTime, Utc};
+use rand::{distributions::Uniform, Rng};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -23,6 +22,7 @@ struct GcdParameters {
 struct GenericResponse {
     status: String,
     message: String,
+    timestamp: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -38,6 +38,11 @@ struct IFactorParams {
 #[derive(Debug, Deserialize)]
 pub struct RouteParams {
     url: String,
+}
+
+#[derive(Serialize)]
+pub struct EchoResponse {
+    message: String,
 }
 
 #[derive(Serialize)]
@@ -119,11 +124,29 @@ pub async fn favicon_handler() -> Result<impl Responder> {
 #[actix_web::head("/{other_url:.*}")]
 pub async fn head_handler(other_url: web::Path<String>) -> impl Responder {
     let message: &str = "HEAD Not Allowed1";
+    let now: DateTime<Utc> = Utc::now();
     let response_json = &GenericResponse {
         status: other_url.to_string(),
         message: message.to_string(),
+        timestamp: now.to_rfc2822(),
     };
     HttpResponse::MethodNotAllowed().json(response_json)
+}
+
+#[actix_web::get("/echo")]
+pub async fn echo_handler(req: HttpRequest) -> impl Responder {
+    let msg = req
+        .headers()
+        .get("Test")
+        .and_then(|e| e.to_str().ok())
+        .unwrap_or_else(|| "Welcome to Actix");
+    let response_json = &EchoResponse {
+        message: msg.to_owned(),
+    };
+
+    HttpResponse::Ok()
+        .content_type(http::header::ContentType::json())
+        .json(response_json)
 }
 
 #[actix_web::get("/hello/{name}")]
@@ -133,9 +156,11 @@ pub async fn greet(name: web::Path<String>) -> impl Responder {
 
 pub async fn health_check_handler() -> impl Responder {
     let message: &str = "actix web service";
+    let now: DateTime<Utc> = Utc::now();
     let response_json = &GenericResponse {
         status: "success".to_string(),
         message: message.to_string(),
+        timestamp: now.to_rfc2822(),
     };
 
     HttpResponse::Ok()
@@ -215,7 +240,7 @@ pub async fn redirect_handler(params: web::Query<RouteParams>) -> impl Responder
         .finish()
 }
 
-pub async fn index_handler() -> HttpResponse {
+pub async fn root_handler() -> HttpResponse {
     HttpResponse::Ok().content_type("text/html").body(
         r#"
             <head>
@@ -232,6 +257,35 @@ pub async fn index_handler() -> HttpResponse {
             </body>
         "#,
     )
+}
+
+#[actix_web::get("/index")]
+pub async fn html_handler() -> impl Responder {
+    let body = r###"
+<html>
+  <title>Actix Web</title>
+  <body>
+    <h1>Welcome to Actix Web</h1>
+  </body>
+</html>
+"###;
+    HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(body)
+}
+
+pub async fn collection(req: HttpRequest) -> impl Responder {
+    let val = req.match_info().get("val").unwrap_or("10");
+    let x = val.parse::<u64>().unwrap();
+
+    let mut rng = rand::thread_rng();
+    let range = Uniform::new(0, 100);
+
+    let vals: Vec<u64> = (1..=x).map(|_| rng.sample(&range)).collect();
+
+    HttpResponse::Ok()
+        .content_type(ContentType::json())
+        .json(vals)
 }
 
 #[test]
