@@ -14,7 +14,7 @@ each with an equal chance of being selected:
     4. 400 BadRequest
 */
 
-use actix_web::{Error, HttpResponse, Responder, ResponseError, Result};
+use actix_web::{Error, HttpResponse, ResponseError, Result};
 use derive_more::Display;
 use rand::{distributions::{Distribution, Standard}, thread_rng, Rng};
 
