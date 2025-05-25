@@ -6,7 +6,7 @@ use actix_files::NamedFile;
 use actix_web::{
     http::{self, header::ContentType},
     web::{self, Form},
-    HttpMessage, HttpRequest, HttpResponse, Responder, Result,
+    HttpRequest, HttpResponse, Responder, Result,
 };
 use chrono::{DateTime, Utc};
 use rand::{distributions::Uniform, Rng};
